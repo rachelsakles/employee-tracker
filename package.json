@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "prompts.js",
-  
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,10 +17,11 @@
   "bugs": {
     "url": "https://github.com/rachelsakles/employee-tracker/issues"
   },
-  "homepage": "https://github.com/rachelsakles/employee-tracker#readme", 
+  "homepage": "https://github.com/rachelsakles/employee-tracker#readme",
   "dependencies": {
     "console.table": "^0.10.0",
     "inquirer": "^7.3.3",
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "mysql2": "^2.1.0"
   }
 }
