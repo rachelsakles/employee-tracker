@@ -23,8 +23,8 @@ function mainMenu() {
         message: "What would you like to do?",
         choices: [
             "View all employees",
-            "View all employees by role",
-            "View all employees by department",
+            "View all roles",
+            "View all departments",
             "Add employee",
             "Add role",
             "Add department",
@@ -38,12 +38,12 @@ function mainMenu() {
                 viewAllEmp();
                 break;
 
-            case "View all employees by role":
-                viewEmpRole();
+            case "View all roles":
+                viewRoles();
                 break;
 
-            case "View all employees by department":
-                viewEmpDept();
+            case "View all departments":
+                viewDept();
                 break;
 
             case "Add employee":
@@ -81,24 +81,65 @@ function viewAllEmp() {
     });
 }
 
-function viewEmpRole() {
+function viewRoles() {
     // select from the db 
-    let query = "SELECT * FROM position_role";
-    connection.query(query, function (err, res) {
+    connection.query("SELECT title FROM position_role", function (err, res) {
         if (err) throw err;
-        console.table(res);
-        mainMenu();
-    });
+        const roles = [];
+        res.map((role) => roles.push(role.title));
+        inquirer.prompt([
+            {
+              type: "list",
+              message: "Which role would you like to view?",
+              choices: roles,
+              name: "roleChoice",
+            },
+          ])
+          .then(function (response) {
+            connection.query(
+              `SELECT e.id, e.first_name, e.last_name, position_role.title, department.department_name AS department, position_role.salary, CONCAT(m.first_name, ' ' ,  m.last_name) AS manager FROM employee e LEFT JOIN employee m ON e.manager_id = m.id INNER JOIN position_role ON position_role.title = "${response.roleChoice}" AND e.role_id = position_role.id INNER JOIN department ON position_role.department_id = department.id`,
+              function (err, res) {
+                if (err) throw err;
+                console.log(`Showing employees with the ${response.roleChoice} role:`);
+                console.table(res);
+                mainMenu();
+              }
+            );
+          });
+      });
+    
 
 }
 
-function viewEmpDept() { 
-    let query = "SELECT * FROM department";
-    connection.query(query, function(err, res) {
-      if (err) throw err;
-      console.table(res);
-      mainMenu();
-    });
+function viewDept() { 
+    connection.query("SELECT department_name FROM department", function (err, res) {
+        if (err) throw err;
+        const depts = [];
+        res.map((dept) => depts.push(dept.department_name));
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              message: "Which department would you like to view?",
+              choices: depts,
+              name: "deptChoice",
+            },
+          ])
+          .then(function (response) {
+            connection.query(
+              `SELECT e.id, e.first_name, e.last_name, position_role.title, department.department_name AS department, position_role.salary, CONCAT(m.first_name, " " ,  m.last_name) AS manager FROM employee e LEFT JOIN employee m ON e.manager_id = m.id INNER JOIN position_role ON e.role_id = position_role.id INNER JOIN department ON position_role.department_id = department.id WHERE department.department_name = "${response.deptChoice}"`,
+              function (err, res) {
+                if (err) throw err;
+                console.log(
+                  `Showing employees in the ${response.deptChoice} department:`
+                );
+                console.table(res);
+                mainMenu();
+              }
+            );
+          });
+      });
+    
 
 }
 
@@ -187,7 +228,7 @@ function updateRole() {
     let query2 = "SELECT * FROM position_role";
     connection.query(query, function (err, res) {
         if (err) throw err;
-        connection.query(query2, function (err2, res2) { 
+        connection.query(query2, function (err2, res2) {
             if (err2) throw err2;
             inquirer.prompt([
                 {
@@ -195,33 +236,58 @@ function updateRole() {
                     type: "list",
                     choices: () => {
                         let choiceArray = [];
-                        res.map(name => choiceArray.push(name.first_name + " " + name.last_name));
+                        //res.map(name => choiceArray.push(name.first_name + " " + name.last_name + " " + name.role_id + " " + name.id )); 
+
+                        res.map(name => choiceArray.push({
+                            name: `${name.first_name} ${name.last_name}`,
+                            value: name.id,
+                        }))
+                        console.log(choiceArray);
                         return choiceArray;
+
                     },
                     message: "what employee would you like to change roles?"
-                }, 
-                {  
+                },
+                {
                     name: "roleChoice",
                     type: "list",
-                    choices: () => { 
+                    choices: () => {
                         console.log(res2);
                         let choiceArray = [];
-                        res2.map(role => choiceArray.push(role.title));
+                        res2.map(role => choiceArray.push({
+                            name: `${role.title}`,
+                            value: role.id,
+                        }))
+                        // res2.map(role => choiceArray.push(role.title));
                         return choiceArray;
                     },
                     message: "what role would you like to change it to?"
 
                 }
-            ]).then(results=>{ 
+            ]).then(results => {
                 console.log(results);
-            })
+                connection.query(
+                    `UPDATE employee SET role_id = (SELECT id FROM position_role WHERE position_role.title = "${results.roleChoice}") WHERE CONCAT(first_name, " ",last_name) = "${results.empChoice}"`
+                );
+                console.log(
+                    `---Employee "${results.empChoice}" has been updated to the "${results.roleChoice}" role---` 
+                    
+                ); 
+                console.table(results);
+                mainMenu();
+            });
+            // connection.query("UPDATE role_id SET ? WHERE id = ? ", [results.roleChoice, results.empChoice], function (err, res) {
+            //     if (err) throw err;
+            // }
+            // ) 
         })
     });
 
 }
 
 
+
 function exit() {
     connection.end();
-    //process.exit();
+    
 }
